@@ -1,43 +1,106 @@
 from flask import Flask, request, jsonify, session, send_from_directory
-import sqlite3
 import hashlib
 import os
 import re
 
 app = Flask(__name__, static_folder="static")
-app.secret_key = "change-this-to-a-random-string-before-going-live"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "classlink.db")
+# ── Database backend detection ────────────────────────────────────────────────
+# Uses PostgreSQL on Render (DATABASE_URL set), SQLite locally.
 
-# ── Database setup ──────────────────────────────────────────────────────────
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+if DATABASE_URL:
+    import psycopg2
+    import psycopg2.extras
+    # Render provides postgres:// but psycopg2 requires postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+else:
+    import sqlite3
+    DB_PATH = os.path.join(os.path.dirname(__file__), "classlink.db")
+
+# ── Database helpers ──────────────────────────────────────────────────────────
+
+def query(sql, params=(), one=False, write=False):
+    """Run a SQL query against whichever DB backend is configured.
+    Returns a dict (one=True), list of dicts (one=False), or None (write=True).
+    Always uses ? as the placeholder — automatically converted to %s for Postgres.
+    """
+    if DATABASE_URL:
+        sql_pg = sql.replace("?", "%s")
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            with conn:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(sql_pg, params)
+                    if write:
+                        return None
+                    if one:
+                        row = cur.fetchone()
+                        return dict(row) if row else None
+                    return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        try:
+            cur = conn.execute(sql, params)
+            if write:
+                conn.commit()
+                return None
+            if one:
+                row = cur.fetchone()
+                return dict(row) if row else None
+            return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+
 
 def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            username    TEXT    UNIQUE NOT NULL,
-            password    TEXT    NOT NULL,
-            full_name   TEXT,
-            grade       TEXT,
-            school      TEXT,
-            instagram   TEXT,
-            tiktok      TEXT,
-            snapchat    TEXT,
-            discord     TEXT,
-            phone       TEXT,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    if DATABASE_URL:
+        query("""
+            CREATE TABLE IF NOT EXISTS users (
+                id          SERIAL PRIMARY KEY,
+                username    TEXT    UNIQUE NOT NULL,
+                password    TEXT    NOT NULL,
+                full_name   TEXT,
+                grade       TEXT,
+                school      TEXT,
+                instagram   TEXT,
+                tiktok      TEXT,
+                snapchat    TEXT,
+                discord     TEXT,
+                phone       TEXT,
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """, write=True)
+    else:
+        query("""
+            CREATE TABLE IF NOT EXISTS users (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                username    TEXT    UNIQUE NOT NULL,
+                password    TEXT    NOT NULL,
+                full_name   TEXT,
+                grade       TEXT,
+                school      TEXT,
+                instagram   TEXT,
+                tiktok      TEXT,
+                snapchat    TEXT,
+                discord     TEXT,
+                phone       TEXT,
+                created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """, write=True)
 
-# ── Password helpers ─────────────────────────────────────────────────────────
+
+# Run at startup (covers both gunicorn on Render and local dev)
+with app.app_context():
+    init_db()
+
+# ── Password helpers ──────────────────────────────────────────────────────────
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -45,7 +108,7 @@ def hash_password(password):
 def check_password(password, hashed):
     return hash_password(password) == hashed
 
-# ── Serve HTML pages ─────────────────────────────────────────────────────────
+# ── Serve HTML pages ──────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -55,7 +118,7 @@ def index():
 def static_files(filename):
     return send_from_directory(".", filename)
 
-# ── API: Sign up ─────────────────────────────────────────────────────────────
+# ── API: Sign up ──────────────────────────────────────────────────────────────
 
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -75,15 +138,15 @@ def signup():
         return jsonify({"error": "Passwords do not match."}), 400
 
     try:
-        conn = get_db()
-        conn.execute(
+        query(
             "INSERT INTO users (username, password) VALUES (?, ?)",
-            (username, hash_password(password))
+            (username, hash_password(password)),
+            write=True
         )
-        conn.commit()
-        conn.close()
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "That username is already taken."}), 409
+    except Exception as e:
+        if "unique" in str(e).lower():
+            return jsonify({"error": "That username is already taken."}), 409
+        raise
 
     session["username"] = username
     return jsonify({"message": "Account created!", "username": username}), 201
@@ -95,8 +158,7 @@ def save_profile():
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
     data = request.get_json()
-    conn = get_db()
-    conn.execute("""
+    query("""
         UPDATE users SET
             full_name = ?, grade = ?, school = ?,
             instagram = ?, tiktok = ?, snapchat = ?, discord = ?, phone = ?
@@ -111,12 +173,10 @@ def save_profile():
         data.get("discord", "").strip(),
         data.get("phone", "").strip(),
         session["username"]
-    ))
-    conn.commit()
-    conn.close()
+    ), write=True)
     return jsonify({"message": "Profile saved!"}), 200
 
-# ── API: Sign in ─────────────────────────────────────────────────────────────
+# ── API: Sign in ──────────────────────────────────────────────────────────────
 
 @app.route("/api/signin", methods=["POST"])
 def signin():
@@ -124,11 +184,7 @@ def signin():
     username = data.get("username", "").strip().lower()
     password = data.get("password", "")
 
-    conn = get_db()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username = ?", (username,)
-    ).fetchone()
-    conn.close()
+    user = query("SELECT * FROM users WHERE username = ?", (username,), one=True)
 
     if not user or not check_password(password, user["password"]):
         return jsonify({"error": "Incorrect username or password."}), 401
@@ -149,15 +205,13 @@ def signout():
 def me():
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
-    conn = get_db()
-    user = conn.execute(
+    user = query(
         "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone FROM users WHERE username = ?",
-        (session["username"],)
-    ).fetchone()
-    conn.close()
+        (session["username"],), one=True
+    )
     if not user:
         return jsonify({"error": "User not found."}), 404
-    return jsonify(dict(user)), 200
+    return jsonify(user), 200
 
 # ── API: View any user's profile ──────────────────────────────────────────────
 
@@ -165,15 +219,13 @@ def me():
 def get_user(username):
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
-    conn = get_db()
-    user = conn.execute(
+    user = query(
         "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone FROM users WHERE username = ?",
-        (username.lower(),)
-    ).fetchone()
-    conn.close()
+        (username.lower(),), one=True
+    )
     if not user:
         return jsonify({"error": "User not found."}), 404
-    return jsonify(dict(user)), 200
+    return jsonify(user), 200
 
 # ── API: Home feed ────────────────────────────────────────────────────────────
 
@@ -181,26 +233,22 @@ def get_user(username):
 def feed():
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
-    conn = get_db()
-    me = conn.execute(
-        "SELECT school FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()
+    me = query("SELECT school FROM users WHERE username = ?", (session["username"],), one=True)
 
     if me and me["school"]:
-        users = conn.execute("""
+        users = query("""
             SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
             FROM users WHERE school = ? AND username != ?
             ORDER BY created_at DESC
-        """, (me["school"], session["username"])).fetchall()
+        """, (me["school"], session["username"]))
     else:
-        users = conn.execute("""
+        users = query("""
             SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
             FROM users WHERE username != ?
             ORDER BY created_at DESC
-        """, (session["username"],)).fetchall()
+        """, (session["username"],))
 
-    conn.close()
-    return jsonify([dict(u) for u in users]), 200
+    return jsonify(users), 200
 
 # ── API: Search ───────────────────────────────────────────────────────────────
 
@@ -208,22 +256,19 @@ def feed():
 def search():
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
-    query = request.args.get("q", "").strip().lower()
-    if not query:
+    q = request.args.get("q", "").strip().lower()
+    if not q:
         return jsonify([]), 200
-    conn = get_db()
-    users = conn.execute("""
+    users = query("""
         SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
         FROM users WHERE (username LIKE ? OR full_name LIKE ?) AND username != ?
         ORDER BY username LIMIT 20
-    """, (f"%{query}%", f"%{query}%", session["username"])).fetchall()
-    conn.close()
-    return jsonify([dict(u) for u in users]), 200
+    """, (f"%{q}%", f"%{q}%", session["username"]))
+    return jsonify(users), 200
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    init_db()
     print("\n  ClassLink is running!")
-    print("  Open this in your browser: http://127.0.0.1:5000\n")
+    print("  Open this in your browser: http://127.0.0.1:5001\n")
     app.run(debug=True, port=5001)
