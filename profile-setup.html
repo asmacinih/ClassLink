@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudentConnect — Profile Setup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --indigo: #4F46E5; --indigo-dark: #3730A3;
+      --text: #0f0f1a; --muted: #6b7280;
+      --border: #e5e7eb; --bg: #f8f7ff;
+      --white: #ffffff; --error: #ef4444; --success: #10b981;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif; background: var(--bg);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 40px 16px; position: relative;
+    }
+    body::before {
+      content: ''; position: fixed; width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 70%);
+      top: -200px; right: -200px; pointer-events: none;
+    }
+    .card {
+      background: var(--white); border-radius: 24px; padding: 48px 44px;
+      width: 100%; max-width: 480px; border: 1px solid var(--border);
+      box-shadow: 0 4px 40px rgba(79,70,229,0.08);
+      position: relative; z-index: 1; animation: fadeUp 0.5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .logo-icon {
+      width: 40px; height: 40px; background: var(--indigo);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+    .steps { display: flex; gap: 6px; align-items: center; margin-bottom: 24px; }
+    .step { width: 28px; height: 4px; border-radius: 2px; background: var(--border); }
+    .step.active { background: var(--indigo); }
+    .step-text { font-size: 12px; color: var(--muted); margin-left: 4px; }
+    h1 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 28px; font-weight: 300; }
+    .section-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--muted); margin: 20px 0 10px;
+    }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+    .optional { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+    .input-row {
+      display: flex; align-items: center; gap: 0;
+      border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: var(--white);
+    }
+    .input-row:focus-within {
+      border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .input-prefix {
+      padding: 11px 12px; font-size: 13px; font-weight: 500;
+      background: #f3f4f6; border-right: 1px solid var(--border);
+      color: var(--muted); white-space: nowrap; min-width: 90px; text-align: center;
+    }
+    .input-prefix.ig   { color: #E1306C; }
+    .input-prefix.tt   { color: #111; }
+    .input-prefix.sc   { color: #FFBE00; }
+    .input-prefix.dc   { color: #5865F2; }
+    .input-prefix.ph   { color: #25D366; }
+    input[type="text"],
+    input[type="tel"] {
+      flex: 1; padding: 11px 12px; border: none; outline: none;
+      font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text);
+      background: transparent;
+    }
+    input[type="text"]::placeholder,
+    input[type="tel"]::placeholder { color: #d1d5db; }
+    .plain-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: 12px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); background: var(--white); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .plain-input:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+    .plain-input::placeholder { color: #d1d5db; }
+    .alert {
+      padding: 12px 14px; border-radius: 10px;
+      font-size: 13px; margin-bottom: 16px; display: none;
+    }
+    .alert.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+    .alert.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
+    .btn {
+      width: 100%; padding: 13px; background: var(--indigo);
+      color: white; border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; margin-top: 20px; transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover { background: var(--indigo-dark); }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .skip { text-align: center; margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .skip a { color: var(--indigo); text-decoration: none; }
+    .skip a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" fill="white"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">StudentConnect</span>
+    </div>
+
+    <div class="steps">
+      <div class="step"></div>
+      <div class="step active"></div>
+      <span class="step-text">Step 2 of 2 — your profile</span>
+    </div>
+
+    <h1>Fill in your profile</h1>
+    <p class="subtitle">Help your classmates find and connect with you</p>
+
+    <div class="alert" id="alert"></div>
+
+    <form id="form" novalidate>
+      <p class="section-label">Basic info</p>
+
+      <div class="form-group">
+        <label for="full_name">Full name</label>
+        <input class="plain-input" type="text" id="full_name" placeholder="Your real name"/>
+      </div>
+      <div class="form-group">
+        <label for="grade">Grade <span class="optional">(optional)</span></label>
+        <input class="plain-input" type="text" id="grade" placeholder="e.g. 10th, 11th, Senior"/>
+      </div>
+      <div class="form-group">
+        <label for="school">School name</label>
+        <input class="plain-input" type="text" id="school" placeholder="e.g. Lincoln High School"/>
+      </div>
+
+      <hr/>
+      <p class="section-label">Socials &amp; contact <span class="optional" style="text-transform:none;letter-spacing:0">(all optional)</span></p>
+
+      <div class="form-group">
+        <label>Instagram</label>
+        <div class="input-row">
+          <span class="input-prefix ig">Instagram</span>
+          <input type="text" id="instagram" placeholder="@username"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>TikTok</label>
+        <div class="input-row">
+          <span class="input-prefix tt">TikTok</span>
+          <input type="text" id="tiktok" placeholder="@username"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Snapchat</label>
+        <div class="input-row">
+          <span class="input-prefix sc">Snapchat</span>
+          <input type="text" id="snapchat" placeholder="@username"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Discord</label>
+        <div class="input-row">
+          <span class="input-prefix dc">Discord</span>
+          <input type="text" id="discord" placeholder="username or username#1234"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Phone number</label>
+        <div class="input-row">
+          <span class="input-prefix ph">Phone</span>
+          <input type="tel" id="phone" placeholder="+1 (000) 000-0000"/>
+        </div>
+      </div>
+
+      <button type="submit" class="btn" id="btn">Finish setup — go to home feed →</button>
+    </form>
+
+    <div class="skip"><a href="home.html">Skip for now</a></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('form');
+    const alertEl = document.getElementById('alert');
+    const btn = document.getElementById('btn');
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert ' + type;
+    }
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const full_name = document.getElementById('full_name').value.trim();
+      const school    = document.getElementById('school').value.trim();
+
+      if (!full_name) return showAlert('Please enter your full name.', 'error');
+      if (!school)    return showAlert('Please enter your school name.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name,
+            grade:     document.getElementById('grade').value.trim(),
+            school,
+            instagram: document.getElementById('instagram').value.trim(),
+            tiktok:    document.getElementById('tiktok').value.trim(),
+            snapchat:  document.getElementById('snapchat').value.trim(),
+            discord:   document.getElementById('discord').value.trim(),
+            phone:     document.getElementById('phone').value.trim(),
+          })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('Profile saved! Taking you home...', 'success');
+          setTimeout(() => window.location.href = 'home.html', 800);
+        } else {
+          showAlert(data.error || 'Something went wrong.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Finish setup — go to home feed →';
+        }
+      } catch (err) {
+        showAlert('Could not connect to server. Is Flask running?', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Finish setup — go to home feed →';
+      }
+    });
+  </script>
+</body>
+</html>

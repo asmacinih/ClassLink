@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ClassLink — Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --indigo: #4F46E5; --indigo-dark: #3730A3; --indigo-light: #EEF2FF;
+      --text: #0f0f1a; --muted: #6b7280;
+      --border: #e5e7eb; --bg: #f8f7ff; --white: #ffffff;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; }
+    nav {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon {
+      width: 34px; height: 34px; background: var(--indigo);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
+    .back-btn {
+      font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      text-decoration: none; display: flex; align-items: center; gap: 4px; transition: all 0.2s;
+    }
+    .back-btn:hover { color: var(--text); border-color: var(--text); }
+
+    .main { max-width: 560px; margin: 0 auto; padding: 32px 24px 60px; }
+
+    .profile-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+      animation: fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .profile-header {
+      padding: 32px 28px 24px;
+      display: flex; align-items: center; gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 500; flex-shrink: 0;
+    }
+    .profile-name { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .profile-username { font-size: 13px; color: var(--indigo); margin-bottom: 6px; }
+    .profile-meta { font-size: 13px; color: var(--muted); }
+
+    .section { padding: 20px 28px; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+    }
+    .social-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .social-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .social-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 500; flex-shrink: 0;
+    }
+    .social-name { font-size: 13px; color: var(--muted); min-width: 72px; }
+    .social-handle { font-size: 14px; color: var(--text); font-weight: 500; }
+    .empty-social { font-size: 13px; color: #d1d5db; }
+
+    .state-box { text-align: center; padding: 80px 20px; color: var(--muted); }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid var(--border);
+      border-top-color: var(--indigo); border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="logo" href="home.html">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" fill="white"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">ClassLink</span>
+    </a>
+    <a class="back-btn" href="home.html">← Back</a>
+  </nav>
+
+  <div class="main" id="main">
+    <div class="state-box"><div class="spinner"></div><p>Loading profile...</p></div>
+  </div>
+
+  <script>
+    const COLORS = [
+      { bg: '#EEF2FF', text: '#4338CA' }, { bg: '#F0FDF4', text: '#166534' },
+      { bg: '#FFF7ED', text: '#9A3412' }, { bg: '#FDF4FF', text: '#7E22CE' },
+      { bg: '#ECFDF5', text: '#065F46' }, { bg: '#FEF3C7', text: '#92400E' },
+    ];
+    function colorFor(u) {
+      let h = 0;
+      for (let c of u) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+      return COLORS[Math.abs(h) % COLORS.length];
+    }
+    function initials(name, username) {
+      if (name) {
+        const p = name.trim().split(' ').filter(Boolean);
+        return p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : p[0].slice(0,2).toUpperCase();
+      }
+      return username.slice(0,2).toUpperCase();
+    }
+
+    function socialRow(icon, label, color, bg, value) {
+      if (!value) return '';
+      return `<div class="social-row">
+        <div class="social-icon" style="background:${bg};color:${color}">${icon}</div>
+        <span class="social-name">${label}</span>
+        <span class="social-handle">${value}</span>
+      </div>`;
+    }
+
+    async function loadProfile() {
+      const params = new URLSearchParams(window.location.search);
+      const username = params.get('u');
+      if (!username) { window.location.href = 'home.html'; return; }
+
+      try {
+        const res = await fetch(`/api/user/${encodeURIComponent(username)}`);
+        if (res.status === 401) { window.location.href = 'signin.html'; return; }
+        if (!res.ok) {
+          document.getElementById('main').innerHTML =
+            `<div class="state-box"><p>User not found.</p></div>`;
+          return;
+        }
+        const u = await res.json();
+        const col = colorFor(u.username);
+        const meta = [u.grade, u.school].filter(Boolean).join(' · ');
+        const hasSocials = u.instagram || u.tiktok || u.snapchat || u.discord || u.phone;
+
+        document.title = `ClassLink — ${u.full_name || u.username}`;
+        document.getElementById('main').innerHTML = `
+          <div class="profile-card">
+            <div class="profile-header">
+              <div class="avatar" style="background:${col.bg};color:${col.text}">
+                ${initials(u.full_name, u.username)}
+              </div>
+              <div>
+                <div class="profile-name">${u.full_name || u.username}</div>
+                <div class="profile-username">@${u.username}</div>
+                <div class="profile-meta">${meta || 'No school set'}</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-label">Socials &amp; contact</div>
+              ${hasSocials ? `
+                ${socialRow('IG', 'Instagram', '#E1306C', '#FFF0F5', u.instagram)}
+                ${socialRow('TT', 'TikTok',    '#111',    '#F3F3F3', u.tiktok)}
+                ${socialRow('SC', 'Snapchat',  '#FFBE00', '#FFFBEB', u.snapchat)}
+                ${socialRow('DC', 'Discord',   '#5865F2', '#EEF0FF', u.discord)}
+                ${socialRow('PH', 'Phone',     '#25D366', '#ECFDF5', u.phone)}
+              ` : '<span class="empty-social">No socials added yet.</span>'}
+            </div>
+          </div>`;
+      } catch {
+        document.getElementById('main').innerHTML =
+          `<div class="state-box"><p>Could not load profile. Is Flask running?</p></div>`;
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

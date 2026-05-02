@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ClassLink — Home</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --indigo: #4F46E5; --indigo-dark: #3730A3; --indigo-light: #EEF2FF;
+      --text: #0f0f1a; --muted: #6b7280;
+      --border: #e5e7eb; --bg: #f8f7ff; --white: #ffffff;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; }
+
+    /* Nav */
+    nav {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon {
+      width: 34px; height: 34px; background: var(--indigo);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-username { font-size: 13px; color: var(--muted); }
+    .signout-btn {
+      font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .signout-btn:hover { color: var(--text); border-color: var(--text); }
+
+    /* Search bar */
+    .search-wrap { padding: 20px 24px 0; max-width: 680px; margin: 0 auto; }
+    .search-box {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 14px; padding: 10px 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-box:focus-within {
+      border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .search-box svg { flex-shrink: 0; }
+    .search-box input {
+      flex: 1; border: none; outline: none; font-size: 14px;
+      font-family: 'DM Sans', sans-serif; color: var(--text); background: transparent;
+    }
+    .search-box input::placeholder { color: #9ca3af; }
+
+    /* Main layout */
+    .main { max-width: 680px; margin: 0 auto; padding: 20px 24px 40px; }
+    .section-title {
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      letter-spacing: 0.05em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* People cards */
+    .cards { display: flex; flex-direction: column; gap: 10px; }
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; text-decoration: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+    .card:hover { border-color: var(--indigo); box-shadow: 0 2px 16px rgba(79,70,229,0.08); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 500; flex-shrink: 0;
+    }
+    .card-info { flex: 1; min-width: 0; }
+    .card-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+    .card-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-socials { display: flex; gap: 6px; flex-shrink: 0; }
+    .social-dot {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 500;
+    }
+
+    /* Username pill */
+    .username-pill {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      background: var(--indigo-light); color: var(--indigo);
+      font-weight: 500; flex-shrink: 0;
+    }
+
+    /* Empty / loading states */
+    .state-box {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted); font-size: 14px;
+    }
+    .state-box p { margin-top: 8px; }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid var(--border);
+      border-top-color: var(--indigo); border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="logo" href="home.html">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" fill="white"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">ClassLink</span>
+    </a>
+    <div class="nav-right">
+      <span class="nav-username" id="nav-username"></span>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="7" stroke="#9ca3af" stroke-width="2"/>
+        <path d="M16.5 16.5l4 4" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input type="text" id="search-input" placeholder="Search students by username..."/>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="section-title" class="section-title">People at your school</div>
+    <div class="cards" id="cards">
+      <div class="state-box"><div class="spinner"></div><p>Loading...</p></div>
+    </div>
+  </div>
+
+  <script>
+    const COLORS = [
+      { bg: '#EEF2FF', text: '#4338CA' },
+      { bg: '#F0FDF4', text: '#166534' },
+      { bg: '#FFF7ED', text: '#9A3412' },
+      { bg: '#FDF4FF', text: '#7E22CE' },
+      { bg: '#ECFDF5', text: '#065F46' },
+      { bg: '#FEF3C7', text: '#92400E' },
+    ];
+
+    function colorFor(username) {
+      let hash = 0;
+      for (let c of username) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+      return COLORS[Math.abs(hash) % COLORS.length];
+    }
+
+    function initials(name, username) {
+      if (name) {
+        const parts = name.trim().split(' ').filter(Boolean);
+        return parts.length >= 2
+          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+          : parts[0].slice(0, 2).toUpperCase();
+      }
+      return username.slice(0, 2).toUpperCase();
+    }
+
+    function socialIcons(user) {
+      const icons = [];
+      if (user.instagram) icons.push({ label: 'IG', color: '#E1306C', bg: '#FFF0F5' });
+      if (user.tiktok)    icons.push({ label: 'TT', color: '#111',    bg: '#F3F3F3' });
+      if (user.snapchat)  icons.push({ label: 'SC', color: '#FFBE00', bg: '#FFFBEB' });
+      if (user.discord)   icons.push({ label: 'DC', color: '#5865F2', bg: '#EEF0FF' });
+      if (user.phone)     icons.push({ label: 'PH', color: '#25D366', bg: '#ECFDF5' });
+      return icons.slice(0, 3).map(i =>
+        `<div class="social-dot" style="background:${i.bg};color:${i.color}">${i.label}</div>`
+      ).join('');
+    }
+
+    function renderCards(users) {
+      const container = document.getElementById('cards');
+      if (!users.length) {
+        container.innerHTML = `<div class="state-box">
+          <p>No students found yet.</p>
+          <p style="margin-top:6px;font-size:12px;">Share ClassLink with your classmates!</p>
+        </div>`;
+        return;
+      }
+      container.innerHTML = users.map((u, i) => {
+        const col = colorFor(u.username);
+        const sub = [u.grade, u.school].filter(Boolean).join(' · ');
+        return `<a class="card" href="profile.html?u=${encodeURIComponent(u.username)}" style="animation-delay:${i * 0.05}s">
+          <div class="avatar" style="background:${col.bg};color:${col.text}">${initials(u.full_name, u.username)}</div>
+          <div class="card-info">
+            <div class="card-name">${u.full_name || u.username}</div>
+            <div class="card-sub">${sub || 'No school set yet'}</div>
+          </div>
+          <div class="card-socials">${socialIcons(u)}</div>
+          <span class="username-pill">@${u.username}</span>
+        </a>`;
+      }).join('');
+    }
+
+    async function loadFeed() {
+      try {
+        const res = await fetch('/api/feed');
+        if (res.status === 401) { window.location.href = 'signin.html'; return; }
+        const users = await res.json();
+        document.getElementById('section-title').textContent = 'People at your school';
+        renderCards(users);
+      } catch {
+        document.getElementById('cards').innerHTML =
+          `<div class="state-box"><p>Could not load feed. Is Flask running?</p></div>`;
+      }
+    }
+
+    async function loadSearch(q) {
+      document.getElementById('section-title').textContent = `Results for "${q}"`;
+      document.getElementById('cards').innerHTML =
+        `<div class="state-box"><div class="spinner"></div><p>Searching...</p></div>`;
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const users = await res.json();
+        renderCards(users);
+      } catch {
+        document.getElementById('cards').innerHTML =
+          `<div class="state-box"><p>Search failed. Is Flask running?</p></div>`;
+      }
+    }
+
+    async function loadMe() {
+      try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+          const me = await res.json();
+          document.getElementById('nav-username').textContent = '@' + me.username;
+        }
+      } catch {}
+    }
+
+    async function signOut() {
+      await fetch('/api/signout', { method: 'POST' });
+      window.location.href = 'signin.html';
+    }
+
+    // Search with debounce
+    let searchTimer;
+    document.getElementById('search-input').addEventListener('input', function() {
+      clearTimeout(searchTimer);
+      const q = this.value.trim();
+      if (!q) { loadFeed(); return; }
+      searchTimer = setTimeout(() => loadSearch(q), 300);
+    });
+
+    loadMe();
+    loadFeed();
+  </script>
+</body>
+</html>
