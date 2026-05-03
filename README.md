@@ -17,3 +17,7 @@ On Mac:
 To run remotely
 1. Open `https://classlink-j7ik.onrender.com`
 Onrender account is under IvanG.
+
+
+GitHub (source code repository)
+1. https://github.com/asmacinih/ClassLink/
