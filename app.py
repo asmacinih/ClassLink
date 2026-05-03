@@ -74,9 +74,12 @@ def init_db():
                 snapchat    TEXT,
                 discord     TEXT,
                 phone       TEXT,
+                avatar_url  TEXT,
                 created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """, write=True)
+        # Add avatar_url to existing databases that predate this column
+        query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT", write=True)
     else:
         query("""
             CREATE TABLE IF NOT EXISTS users (
@@ -91,9 +94,15 @@ def init_db():
                 snapchat    TEXT,
                 discord     TEXT,
                 phone       TEXT,
+                avatar_url  TEXT,
                 created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """, write=True)
+        # Add avatar_url to existing SQLite databases
+        try:
+            query("ALTER TABLE users ADD COLUMN avatar_url TEXT", write=True)
+        except Exception:
+            pass  # Column already exists
 
 
 # Run at startup (covers both gunicorn on Render and local dev)
@@ -176,6 +185,30 @@ def save_profile():
     ), write=True)
     return jsonify({"message": "Profile saved!"}), 200
 
+# ── API: Upload avatar ────────────────────────────────────────────────────────
+
+@app.route("/api/upload-avatar", methods=["POST"])
+def upload_avatar():
+    if "username" not in session:
+        return jsonify({"error": "Not logged in."}), 401
+    data = request.get_json()
+    avatar_data = data.get("avatar_data", "").strip()
+
+    if not avatar_data:
+        return jsonify({"error": "No image data provided."}), 400
+    if not avatar_data.startswith("data:image/"):
+        return jsonify({"error": "Invalid image format."}), 400
+    # Limit to ~2MB (base64 encoded ~2.7MB raw)
+    if len(avatar_data) > 2_800_000:
+        return jsonify({"error": "Image is too large. Please use an image under 2MB."}), 400
+
+    query(
+        "UPDATE users SET avatar_url = ? WHERE username = ?",
+        (avatar_data, session["username"]),
+        write=True
+    )
+    return jsonify({"message": "Avatar uploaded!", "avatar_url": avatar_data}), 200
+
 # ── API: Sign in ──────────────────────────────────────────────────────────────
 
 @app.route("/api/signin", methods=["POST"])
@@ -206,7 +239,7 @@ def me():
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
     user = query(
-        "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone FROM users WHERE username = ?",
+        "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone, avatar_url FROM users WHERE username = ?",
         (session["username"],), one=True
     )
     if not user:
@@ -220,7 +253,7 @@ def get_user(username):
     if "username" not in session:
         return jsonify({"error": "Not logged in."}), 401
     user = query(
-        "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone FROM users WHERE username = ?",
+        "SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone, avatar_url FROM users WHERE username = ?",
         (username.lower(),), one=True
     )
     if not user:
@@ -237,13 +270,13 @@ def feed():
 
     if me and me["school"]:
         users = query("""
-            SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
+            SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone, avatar_url
             FROM users WHERE school = ? AND username != ?
             ORDER BY created_at DESC
         """, (me["school"], session["username"]))
     else:
         users = query("""
-            SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
+            SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone, avatar_url
             FROM users WHERE username != ?
             ORDER BY created_at DESC
         """, (session["username"],))
@@ -260,7 +293,7 @@ def search():
     if not q:
         return jsonify([]), 200
     users = query("""
-        SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone
+        SELECT username, full_name, grade, school, instagram, tiktok, snapchat, discord, phone, avatar_url
         FROM users WHERE (username LIKE ? OR full_name LIKE ?) AND username != ?
         ORDER BY username LIMIT 20
     """, (f"%{q}%", f"%{q}%", session["username"]))

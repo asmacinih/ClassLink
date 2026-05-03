@@ -151,12 +151,14 @@
         const hasSocials = u.instagram || u.tiktok || u.snapchat || u.discord || u.phone;
 
         document.title = `ClassLink — ${u.full_name || u.username}`;
+        const avatarHtml = u.avatar_url
+          ? `<img src="${u.avatar_url}" alt="${u.username}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+          : `<div class="avatar" style="background:${col.bg};color:${col.text}">${initials(u.full_name, u.username)}</div>`;
+
         document.getElementById('main').innerHTML = `
           <div class="profile-card">
             <div class="profile-header">
-              <div class="avatar" style="background:${col.bg};color:${col.text}">
-                ${initials(u.full_name, u.username)}
-              </div>
+              ${avatarHtml}
               <div>
                 <div class="profile-name">${u.full_name || u.username}</div>
                 <div class="profile-username">@${u.username}</div>

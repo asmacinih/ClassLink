@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StudentConnect — Profile Setup</title>
+  <title>ClassLink — Profile Setup</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -106,6 +106,28 @@
     .skip { text-align: center; margin-top: 12px; font-size: 13px; color: var(--muted); }
     .skip a { color: var(--indigo); text-decoration: none; }
     .skip a:hover { text-decoration: underline; }
+
+    /* Avatar uploader */
+    .avatar-wrap {
+      display: flex; flex-direction: column; align-items: center; margin-bottom: 28px; gap: 10px;
+    }
+    .avatar-ring {
+      width: 88px; height: 88px; border-radius: 50%;
+      background: var(--indigo-light, #EEF2FF); color: var(--indigo);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700;
+      cursor: pointer; position: relative; overflow: hidden;
+      border: 2.5px dashed var(--indigo); transition: opacity 0.2s;
+    }
+    .avatar-ring:hover { opacity: 0.85; }
+    .avatar-ring img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-ring .camera-overlay {
+      position: absolute; inset: 0; background: rgba(79,70,229,0.55);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.2s; border-radius: 50%;
+    }
+    .avatar-ring:hover .camera-overlay { opacity: 1; }
+    .avatar-hint { font-size: 12px; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -117,7 +139,7 @@
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </div>
-      <span class="logo-text">StudentConnect</span>
+      <span class="logo-text">ClassLink</span>
     </div>
 
     <div class="steps">
@@ -130,6 +152,21 @@
     <p class="subtitle">Help your classmates find and connect with you</p>
 
     <div class="alert" id="alert"></div>
+
+    <!-- Avatar uploader -->
+    <div class="avatar-wrap">
+      <div class="avatar-ring" id="avatar-ring" onclick="document.getElementById('avatar-input').click()">
+        <span id="avatar-initials">?</span>
+        <div class="camera-overlay">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="13" r="4" stroke="white" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+      <span class="avatar-hint">Click to add a photo</span>
+      <input type="file" id="avatar-input" accept="image/*" style="display:none"/>
+    </div>
 
     <form id="form" novalidate>
       <p class="section-label">Basic info</p>
@@ -193,14 +230,61 @@
   </div>
 
   <script>
-    const form = document.getElementById('form');
+    const form    = document.getElementById('form');
     const alertEl = document.getElementById('alert');
-    const btn = document.getElementById('btn');
+    const btn     = document.getElementById('btn');
+    let avatarDataUrl = null;
 
     function showAlert(msg, type) {
       alertEl.textContent = msg;
       alertEl.className = 'alert ' + type;
     }
+
+    // Update initials placeholder from name field
+    document.getElementById('full_name').addEventListener('input', function() {
+      if (!avatarDataUrl) {
+        const name = this.value.trim();
+        const parts = name.split(' ').filter(Boolean);
+        const ini = parts.length >= 2
+          ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+          : (parts[0] ? parts[0].slice(0,2).toUpperCase() : '?');
+        document.getElementById('avatar-initials').textContent = ini;
+      }
+    });
+
+    // Handle image selection — resize to 200×200 via canvas, show preview
+    document.getElementById('avatar-input').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = 200; canvas.height = 200;
+          const ctx = canvas.getContext('2d');
+          // Cover-crop to square
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200);
+          avatarDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          // Show preview
+          const ring = document.getElementById('avatar-ring');
+          ring.innerHTML = `<img src="${avatarDataUrl}" alt="avatar"/>
+            <div class="camera-overlay">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="13" r="4" stroke="white" stroke-width="2"/>
+              </svg>
+            </div>`;
+          ring.style.border = '2.5px solid var(--indigo)';
+          ring.onclick = () => document.getElementById('avatar-input').click();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
 
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -215,6 +299,23 @@
       btn.textContent = 'Saving...';
 
       try {
+        // Upload avatar first if one was selected
+        if (avatarDataUrl) {
+          const avatarRes = await fetch('/api/upload-avatar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatar_data: avatarDataUrl })
+          });
+          if (!avatarRes.ok) {
+            const d = await avatarRes.json();
+            showAlert(d.error || 'Avatar upload failed.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Finish setup — go to home feed →';
+            return;
+          }
+        }
+
+        // Save profile
         const res = await fetch('/api/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
