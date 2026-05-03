@@ -198,8 +198,11 @@
       container.innerHTML = users.map((u, i) => {
         const col = colorFor(u.username);
         const sub = [u.grade, u.school].filter(Boolean).join(' · ');
+        const avatarHtml = u.avatar_url
+          ? `<img src="${u.avatar_url}" alt="${u.username}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+          : `<div class="avatar" style="background:${col.bg};color:${col.text}">${initials(u.full_name, u.username)}</div>`;
         return `<a class="card" href="profile.html?u=${encodeURIComponent(u.username)}" style="animation-delay:${i * 0.05}s">
-          <div class="avatar" style="background:${col.bg};color:${col.text}">${initials(u.full_name, u.username)}</div>
+          ${avatarHtml}
           <div class="card-info">
             <div class="card-name">${u.full_name || u.username}</div>
             <div class="card-sub">${sub || 'No school set yet'}</div>
